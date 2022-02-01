@@ -1,0 +1,481 @@
+---
+# Source: cluster-backup-chart/templates/clusterbackup-serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: RELEASE-NAME-cluster-backup-chart
+  namespace: default
+  labels:
+    app: cluster-backup-chart
+    chart: cluster-backup-chart-2.4.0
+    release: RELEASE-NAME
+    heritage: Helm
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cluster-backup-chart
+    helm.sh/chart: cluster-backup-chart-2.4.0
+    component: serviceaccount
+---
+# Source: cluster-backup-chart/templates/clusterbackup-clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: open-cluster-management:RELEASE-NAME:clusterrole
+  namespace: default
+  labels:
+    app: cluster-backup-chart
+    chart: cluster-backup-chart-2.4.0
+    release: RELEASE-NAME
+    heritage: Helm
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cluster-backup-chart
+    helm.sh/chart: cluster-backup-chart-2.4.0
+    component: clusterrole
+
+rules:
+
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+
+- verbs:
+  - create
+  - patch
+  apiGroups:
+  - ''
+  resources:
+  - events
+
+- verbs:
+  - list
+  - get
+  apiGroups:
+  - ''
+  resources:
+  - secrets
+
+- apiGroups:
+  - apps.open-cluster-management.io
+  resources:
+  - channels
+  verbs:
+  - get
+  - list
+  - watch
+
+- apiGroups:
+  - hive.openshift.io
+  resources:
+  - clusterpools
+  verbs:
+  - get
+  - list
+  - watch
+
+- apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - managedclusters
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+
+- verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - restores
+  - backupschedules
+
+- verbs:
+  - update
+  apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - restores/finalizers
+  - backupschedules/finalizers
+
+- verbs:
+  - get
+  - patch
+  - update
+  apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - restores/status
+  - backupschedules/status
+
+- verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  apiGroups:
+  - velero.io
+  resources:
+  - backups
+  - restores
+  - schedules
+
+- apiGroups:
+  - velero.io
+  resources:
+  - backupstoragelocations
+  verbs:
+  - get
+  - list
+  - watch
+
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+# Source: cluster-backup-chart/templates/clusterbackup-clusterrolebinding.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: open-cluster-management:RELEASE-NAME:clusterrolebinding
+  namespace: default
+  labels:
+    app: cluster-backup-chart
+    chart: cluster-backup-chart-2.4.0
+    release: RELEASE-NAME
+    heritage: Helm
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cluster-backup-chart
+    helm.sh/chart: cluster-backup-chart-2.4.0
+    component: clusterrolebinding
+subjects:
+- kind: ServiceAccount
+  name: RELEASE-NAME-cluster-backup-chart
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: open-cluster-management:RELEASE-NAME:clusterrole
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: cluster-backup-chart/templates/clusterbackup-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-cluster-backup-chart-clusterbackup
+  namespace: default
+  labels:
+    app: cluster-backup-chart    
+    chart: cluster-backup-chart-2.4.0
+    component: "clusterbackup"
+    release: RELEASE-NAME
+    heritage: Helm
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: cluster-backup-chart
+    helm.sh/chart: cluster-backup-chart-2.4.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cluster-backup-chart
+      component: "clusterbackup"
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        app: cluster-backup-chart
+        ocm-antiaffinity-selector: "clusterbackup"
+        component: "clusterbackup"
+        release: RELEASE-NAME
+        chart: cluster-backup-chart-2.4.0
+        heritage: Helm
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: cluster-backup-chart
+        helm.sh/chart: cluster-backup-chart-2.4.0  
+    spec:
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      serviceAccountName: RELEASE-NAME-cluster-backup-chart
+      securityContext:
+        runAsNonRoot: true
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: ocm-antiaffinity-selector
+                  operator: In
+                  values:
+                  - clusterbackup
+              topologyKey: topology.kubernetes.io/zone
+            weight: 70
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: ocm-antiaffinity-selector
+                  operator: In
+                  values:
+                  - clusterbackup
+              topologyKey: kubernetes.io/hostname
+            weight: 35
+      tolerations:
+      - key: dedicated
+        operator: Exists
+        effect: NoSchedule
+      - effect: NoSchedule 
+        key: node-role.kubernetes.io/infra 
+        operator: Exists
+      containers:
+      - name: cluster-backup
+        image: quay.io/stolostron/cluster-backup-controller:latest
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+---
+# Source: cluster-backup-chart/templates/clusterbackup-clusterrole.yaml
+# Copyright Contributors to the Open Cluster Management project
+---
+# Source: cluster-backup-chart/templates/clusterbackup-clusterrolebinding.yaml
+# Copyright Contributors to the Open Cluster Management project
+---
+# Source: cluster-backup-chart/templates/clusterbackup-deployment.yaml
+# Copyright Contributors to the Open Cluster Management project
+---
+# Source: cluster-backup-chart/templates/clusterbackup-serviceaccount.yaml
+# Copyright Contributors to the Open Cluster Management project
+---
+# Source: cluster-backup-chart/templates/hub-backup-pod.yaml
+# Copyright Contributors to the Open Cluster Management project
+---
+# Source: cluster-backup-chart/templates/hub-backup-pod.yaml
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+  name: backup-restore-enabled
+  namespace: default
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: backup-restore-enabled
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: backup-restore-enabled
+---
+# Source: cluster-backup-chart/templates/hub-backup-pod.yaml
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+  name: backup-restore-enabled
+  namespace: default
+spec:
+  clusterConditions:
+    - status: 'True'
+      type: ManagedClusterConditionAvailable
+  clusterSelector:
+    matchExpressions:
+      - key: name
+        operator: In
+        values:
+          - local-cluster
+---
+# Source: cluster-backup-chart/templates/hub-backup-pod.yaml
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    policy.open-cluster-management.io/categories: PR.IP Information Protection Processes and Procedures
+    policy.open-cluster-management.io/controls: PR.IP-4 Backups of information are conducted maintained and tested
+    policy.open-cluster-management.io/standards: NIST-CSF
+    policy.open-cluster-management.io/source: system
+  name: backup-restore-enabled
+  namespace: default
+spec:
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: acm-backup-pod-running
+        spec:
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Pod
+                metadata:
+                  labels:
+                    app: cluster-backup-chart
+                  namespace: default
+                status:
+                  phase: Running
+          remediationAction: inform
+          severity: high
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: oadp-pod-running
+        spec:
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Pod
+                metadata:
+                  annotations:
+                    repository: https://github.com/openshift/oadp-operator
+                  namespace: openshift-adp
+                status:
+                  phase: Running
+          remediationAction: inform
+          severity: high 
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: velero-pod-running
+        spec:
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Pod
+                metadata:
+                  labels:
+                    app.kubernetes.io/name: velero
+                  namespace: openshift-adp
+                status:
+                  phase: Running
+          remediationAction: inform
+          severity: high
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: backup-storage-location-available
+        spec:
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: velero.io/v1
+                kind: BackupStorageLocation
+                metadata:
+                  namespace: openshift-adp
+                status:
+                  phase: Available
+          remediationAction: inform
+          severity: high 
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: acm-managed-clusters-schedule-backups-available
+        spec:
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: velero.io/v1
+                kind: Backup
+                metadata:
+                  namespace: openshift-adp
+                  labels:
+                    velero.io/schedule-name: acm-managed-clusters-schedule
+                status:
+                  phase: Completed
+          remediationAction: inform
+          severity: high 
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: acm-resources-schedule-backups-available
+        spec:
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: velero.io/v1
+                kind: Backup
+                metadata:
+                  namespace: openshift-adp
+                  labels:
+                    velero.io/schedule-name: acm-resources-schedule
+                status:
+                  phase: Completed
+          remediationAction: inform
+          severity: high                                                
+  remediationAction: inform
